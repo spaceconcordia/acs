@@ -1,4 +1,7 @@
-# importing libraries.
+###############################################################################
+#                     I M P O R T    L I B R A R I E S
+###############################################################################
+import PIL # Python Imaging Library
 import numpy as np
 import sympy as sp
 import matplotlib as mpl
@@ -8,22 +11,16 @@ from sympy.utilities.lambdify import lambdify
 from scipy.integrate import ode
 from mpl_toolkits.mplot3d import axes3d as p3
 
-################################################################################
+###############################################################################
 #                     S E T U P    L I B R A R I E S
-################################################################################
-
+###############################################################################
 np.set_printoptions(precision=15)
 mpl.rcParams['figure.figsize'] = (8.0, 6.0)
 
-
-################################################################################
+###############################################################################
 #                       M A I N     F U N C T I O N:
-################################################################################
-
+###############################################################################
 def main() :
-  '''
-  '''
-
   # Instantiate symbolic variables
   mu, r, x, y, z = sp.symbols('mu r x y z')
 
@@ -49,8 +46,8 @@ def main() :
   dUdy = dUdy.subs([('mu', mu)])
   dUdz = dUdz.subs([('mu', mu)])
 
-  # Transform symbolic expressions into numeric expressions (to use in
-  # the integrator)
+  # Transform symbolic expressions into numeric expressions 
+  # (to use in the integrator)
   dUdx_func = lambdify((x, y, z), dUdx)
   dUdy_func = lambdify((x, y, z), dUdy)
   dUdz_func = lambdify((x, y, z), dUdz)
@@ -114,28 +111,88 @@ def main() :
   plt.xlabel('Time [hrs]', fontsize=16)
   plt.ylabel('x [km]', fontsize=16)
   
-  ######## NEED HELP #########################
+  ############################################################################
   # Plotting an orbiting satellite around Earth
-  ############################################
+  ############################################################################
   # Coefficients in a0/c x**2 + a1/c y**2 + a2/c z**2 = 1 
   coefs = (1, 1, 1)  
+
   # Radii corresponding to the coefficients:
   rx, ry, rz = [R_earth/np.sqrt(coef) for coef in coefs]
-  # Set of all spherical angles:
-  u = np.linspace(0, 2 * np.pi, 100)
-  v = np.linspace(0, np.pi, 100)
-  # Cartesian coordinates that correspond to the spherical angles:
-  # (this is the equation of an ellipsoid):
-  x = rx * np.outer(np.cos(u), np.sin(v))
-  y = ry * np.outer(np.sin(u), np.sin(v))
-  z = rz * np.outer(np.ones_like(u), np.cos(v))
-  
-  fig = plt.figure(2)
-  ax = p3.Axes3D(fig)
-  ax.plot_surface(x, y, z, rstride=4, cstride=4, color='white')
-  ax.plot(positions[:,0],positions[:,1],positions[:,2])
 
+
+  ############################################################################
+  #
+  # plot_sphere()
+  #
+  # Plot a rotatable 3D sphere representing the earth 
+  # image_path: string of the path to an equirectuagular image of the earth
+  #
+  ############################################################################
+  def plot_sphere():
+    print "Plotting Sphere..."
+    
+    # Set of all spherical angles:
+    u = np.linspace(0, 2 * np.pi, 100)
+    v = np.linspace(0, np.pi, 100)
+    
+    # Cartesian coordinates that correspond to the spherical angles:
+    # (this is the equation of an ellipsoid):
+    x = rx * np.outer(np.cos(u), np.sin(v))
+    y = ry * np.outer(np.sin(u), np.sin(v))
+    z = rz * np.outer(np.ones_like(u), np.cos(v))
+    
+    # Plot
+    fig = plt.figure(2)
+    ax = p3.Axes3D(fig)
+    ax.plot_surface(x, y, z, rstride=4, cstride=4, color='white')
+    ax.plot(positions[:,0],positions[:,1],positions[:,2])
+  
+  #############################################################################
+  #
+  # plot_earth()
+  #
+  # Plot a rotatable 3D sphere with an image of the earth projected onto its 
+  # surface
+  #
+  # params:
+  #   image_path: string of the path to an equirectuagular image of the earth
+  #
+  # reference: 
+  # http://stackoverflow.com/questions/30269099/creating-a-rotatable-3d-earth?lq=1
+  ###############################################################################
+  def plot_earth(image_path):
+    print "Plotting Spherical Earth..."
+
+    # Import image
+    bm = PIL.Image.open(image_path)
+  
+    # scale image, divide by 256 for matplotplib RGB values 
+    scaling_factor = 1
+    bm = np.array(bm.resize([d/scaling_factor for d in bm.size]))/256.
+    
+    # Set of all spherical angles:
+    # TODO - don't know if this is entirely accurate, but probably close
+    u = np.linspace(-np.pi, np.pi, bm.shape[1])
+    v = np.linspace(-np.pi/2, np.pi/2, bm.shape[0])[::-1]
+    
+    # Cartesian coordinates that correspond to the spherical angles:
+    # (this is the equation of an ellipsoid):
+    x = rx * np.outer(np.cos(u), np.cos(v)).T
+    y = ry * np.outer(np.sin(u), np.cos(v)).T
+    z = rz * np.outer(np.ones(np.size(u)), np.sin(v)).T
+    
+    # Plot
+    fig = plt.figure(3)
+    ax = p3.Axes3D(fig)
+    ax.plot_surface(x, y, z, rstride=4, cstride=4, facecolors = bm)
+    ax.plot(positions[:,0],positions[:,1],positions[:,2])
+    
+
+  plot_sphere()
+  plot_earth('matlab/1024px-Land_ocean_ice_2048.jpg')
   plt.show()
+  print "Done\r\n"
 
   return
 
